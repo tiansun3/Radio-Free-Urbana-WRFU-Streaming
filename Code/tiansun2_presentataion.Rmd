@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+author: "Tian Sun"
+date: "2023-03-03"
+output:
+  powerpoint_presentation: default
+  ioslides_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+
+## Test
+```{r, results = FALSE, message=FALSE}
+    data_wrfu_streaming_completed_part01 <- read_csv("data-wrfu-streaming-completed-part01.csv")
+    data_wrfu_streaming_completed_part02 <- read_csv("data-wrfu-streaming-completed-part02.csv")
+    wrfu <- rbind(data_wrfu_streaming_completed_part01, data_wrfu_streaming_completed_part02)
+    wrfu$continent_code <- ifelse(wrfu$continent_name == "North America", "NA", wrfu$continent_code)
+```
+
+NA Rate
+```{r}
+    length(which(apply(wrfu, 1, function(X) any(is.na(X)))))/nrow(wrfu)
+```
+## World Wide Distribution
+```{r}
+    a <- na.omit(wrfu)
+    a$Date<-with(a,paste(`end time of listener session year`, `end time of listener session month`, `end time of listener session day`,sep="-"))
+    b <- a %>% 
+      group_by(continent_name) %>% 
+      summarise(count = n()) %>% 
+      arrange(desc(count))
+    print(as.data.frame(b))
+```
+
+## World Wide Distribution
+```{r, out.width = '75%', fig.align = 'center'}
+    length(unique(a$masked_ip))
+
+    c <- a %>% 
+      select(continent_name, continent_code, masked_ip) %>% 
+      distinct(masked_ip, .keep_all = TRUE) %>% 
+      group_by(continent_name) %>% 
+      summarise(count = n()) %>% 
+      arrange(desc(count))
+    print(as.data.frame(c))
+    
+    p <- ggplot(c, aes(x=continent_name, y=count, fill=continent_name)) +
+      geom_bar(stat="identity")+
+      geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+      theme_minimal()
+    p
+```
+
+## Special EU Listener "2705.093"
+```{r}
+    d <- a %>% 
+      filter(continent_code == "EU") %>% 
+      filter(masked_ip == 2705.093) %>% 
+      select(`minutes of overlap between listen time and show time`, `total minutes of listen time`, Date, `end time of listener session time`, `end time of listener session year`, `show title`, continent_code, continent_name, masked_ip)
+    print(as.data.frame(d))
+    nrow(d)
+```
+
+## Most Popular Show
+```{r}
+    e <- a %>% 
+      filter(`minutes of overlap between listen time and show time` >= 1) %>% 
+      group_by(`show title`) %>% 
+      summarise(count = n()) %>% 
+      arrange(desc(count))
+    e
+    
+    f <- a %>% 
+      filter(`minutes of overlap between listen time and show time` >= 1) %>% 
+      group_by(`show title`, `end time of listener session year`) %>% 
+      summarise(count_by_year = n()) %>% 
+      ungroup(`end time of listener session year`) %>% 
+      mutate(count = sum(count_by_year)) %>% 
+      filter(`show title`%in%(e$`show title`[1:6]))
+    f
+    
+    f$`end time of listener session year`<- as.factor(f$`end time of listener session year`)
+    
+    ggplot(data=f, aes(x=`show title`, y=count_by_year, fill=`end time of listener session year`)) +
+      geom_bar(position="dodge", stat="identity")+
+      geom_text(aes(label=count_by_year), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+      theme_minimal()
+```

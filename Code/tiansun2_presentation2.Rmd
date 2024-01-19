@@ -1,0 +1,129 @@
+---
+title: "Radio Free Urbana (WRFU) Streaming"
+author: "Tian Sun"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+
+data_wrfu_streaming_completed_part01 <- read_csv("data-wrfu-streaming-completed-part01.csv")
+    data_wrfu_streaming_completed_part02 <- read_csv("data-wrfu-streaming-completed-part02.csv")
+    wrfu <- rbind(data_wrfu_streaming_completed_part01, data_wrfu_streaming_completed_part02)
+    wrfu$continent_code <- ifelse(wrfu$continent_name == "North America", "NA", wrfu$continent_code)
+
+a <- na.omit(wrfu)
+    a$Date<-with(a,paste(`end time of listener session year`, `end time of listener session month`, `end time of listener session day`,sep="-"))
+
+g <- a %>% 
+  filter(`minutes of overlap between listen time and show time` >= 1)
+
+h <- g %>% 
+            mutate(weekday = ifelse(`end time of listener session weekday` %in% c("Thu", "Fri", "Mon", "Tue", "Wed"), 1, 0),
+                   season = case_when(`end time of listener session month` %in% c("Mar", "Apr", "May")~ "Spring",
+                                      `end time of listener session month` %in% c("Jun", "Jul", "Aug")~ "Summer",
+                                      `end time of listener session month` %in% c("Sep", "Oct", "Nov")~ "Fall",
+                                      `end time of listener session month` %in% c("Dec", "Jan", "Feb")~ "Winter")) %>% 
+            rename("year"= `end time of listener session year`)
+```
+
+## Information
+
+WRFU "Radio Free Urbana" 104.5FM is a low power FM station broadcasting a variety music format in Urbana Illinois.
+
+Its aim is to foster the creation and distribution of media and art that emphasizes underrepresented voices and perspectives.
+
+Last time:
+
+* World wide distribution 
+* Top 6 popular show
+* Changes of listener between years.
+
+
+## Correlation Analysis
+
+* ANOVA Test
+* Linear Regression Model
+
+## ANOVA TEST
+
+How a quantitative dependent variable changes according to the levels of one or more categorical independent variables.
+
+Response variable: `total minutes of listen time`
+
+Feature variables:
+
+  * Location
+  * Time
+  * Show Tittle
+  
+Null Hypothesis: There is no difference in means.
+
+Alternative Hypothesis: There is at least one set of mean values that are not equal.
+
+## Location
+
+```{r}
+    two.way <- aov(`total minutes of listen time` ~
+                     continent_code+country_code, data = g)
+    summary(two.way)
+```
+
+## Time
+
+New variables created: 
+
+* weekday
+* season
+
+```{r}
+    two.way1 <- aov(`total minutes of listen time` ~
+                      weekday +
+                      season +
+                      year, data = h)
+    summary(two.way1)
+```
+
+## Show title
+```{r}
+    one.way <- aov(`total minutes of listen time` ~`show title`, data = h)
+    summary(one.way)
+```
+
+## Linear Regression Model
+
+formula: `total minutes of listen time`~continent_code+season+weekday+factor(year)
+
+```{r}
+    mod <- lm(`total minutes of listen time` ~continent_code+season+weekday+factor(year), data = h)
+    summary(mod)
+```
+## Linear Regression Model
+
+formula: `total minutes of listen time`~+season+weekday+factor(year)
+
+```{r}
+    mod <- lm(`total minutes of listen time` ~+season+weekday+factor(year), data = h)
+    summary(mod)
+```
+
+## Conclusion
+
+1. The total listening time has correlation with location, time and show title.
+2. Among all year of listening, Fall(Sep, Oct, & Nov) has longest time.
+3. Comparing to weekend(Sat & Sun), people listen longer on weekdays.
+4. Among three years 2020, 2021, 2022, 2021 has the longest listening time.
+
+|              |   Estimate  |Std. Error| t value| Pr(>|t|)|  
+|    ----      |     ----    |   ----   | ----   |  ----   |         
+|(Intercept)   |    25.4085  |   0.9531 | 26.659 |  <2e-16|
+|seasonSpring  |   -12.9065  |   0.9805 |-13.163 |  <2e-16|
+|seasonSummer  |    -8.4524  |   0.9276 | -9.112 |  <2e-16|
+|seasonWinter  |    -8.4341  |   0.9157 | -9.210 |  <2e-16|
+|weekday       |     5.9960  |   0.6777 |  8.848 |  <2e-16|
+|factor(year)2021|  10.0812  |   1.0531 |  9.573 |  <2e-16|
+|factor(year)2022|  -7.3372  |   0.7816 | -9.387 |  <2e-16|
